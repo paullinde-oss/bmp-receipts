@@ -2600,65 +2600,82 @@ if('serviceWorker' in navigator){
     .catch(function(){/* SW optional */});
 }
 
-// 3. In-app install prompt
+// 3. PWA install support — exposes window.bmpInstallApp() for the Settings tab
 (function(){
-  var DISMISS_KEY = 'bmp_pwa_prompt_dismissed';
-  if(localStorage.getItem(DISMISS_KEY)) return;
-
   var isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
-  var isAndroid = /Android/.test(navigator.userAgent);
-  var isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                     window.navigator.standalone === true;
 
-  if(isStandalone) return;
-
-  function dismiss(){
-    localStorage.setItem(DISMISS_KEY, '1');
-    var el = document.getElementById('bmp-pwa-banner');
-    if(el) el.remove();
+  function showModal(msg){
+    if(document.getElementById('bmp-install-modal')) return;
+    var overlay = document.createElement('div');
+    overlay.id = 'bmp-install-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:24px;';
+    overlay.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:16px;padding:24px;max-width:340px;width:100%;color:#e0e0e0;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">' +
+      '<div style="font-size:32px;margin-bottom:12px;text-align:center">\u{1F4F2}</div>' +
+      '<div style="font-size:16px;font-weight:600;margin-bottom:12px;text-align:center">Install BMP Receipt Tracker</div>' +
+      '<div style="font-size:14px;color:#aaa;line-height:1.5;margin-bottom:20px;text-align:center">' + msg + '</div>' +
+      '<button onclick="document.getElementById(\'bmp-install-modal\').remove()" style="width:100%;background:#f97316;color:#fff;border:none;border-radius:10px;padding:12px;font-size:15px;font-weight:600;cursor:pointer;">Got it</button>' +
+      '</div>';
+    document.body.appendChild(overlay);
   }
 
-  function showBanner(msg){
-    if(document.getElementById('bmp-pwa-banner')) return;
-    var banner = document.createElement('div');
-    banner.id = 'bmp-pwa-banner';
-    banner.style.cssText = [
-      'position:fixed','bottom:80px','left:12px','right:12px','z-index:9999',
-      'background:#1a1a1a','border:1px solid #333','border-radius:14px',
-      'padding:14px 16px','display:flex','align-items:center','gap:12px',
-      'box-shadow:0 4px 20px rgba(0,0,0,0.5)',
-      'font-family:Helvetica Neue,Helvetica,Arial,sans-serif',
-      'font-size:13px','color:#e0e0e0','animation:bmpSlideUp 0.3s ease'
-    ].join(';');
-    banner.innerHTML = '<style>@keyframes bmpSlideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}</style>' +
-      '<span style="font-size:22px">📲</span>' +
-      '<div style="flex:1"><div style="font-weight:600;margin-bottom:3px">Add to Home Screen</div>' +
-      '<div style="font-size:12px;color:#888">' + msg + '</div></div>' +
-      '<button onclick="(function(){localStorage.setItem(&apos;bmp_pwa_prompt_dismissed&apos;,&apos;1&apos;);document.getElementById(&apos;bmp-pwa-banner&apos;).remove()})()" ' +
-      'style="background:none;border:none;color:#666;font-size:20px;cursor:pointer;padding:4px;line-height:1">✕</button>';
-    document.body.appendChild(banner);
-  }
+  window.bmpInstallApp = function(){
+    var isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                       window.navigator.standalone === true;
+    if(isStandalone){
+      showModal('This app is already installed on your device!');
+      return;
+    }
+    if(window._pwaPrompt){
+      window._pwaPrompt.prompt();
+      window._pwaPrompt.userChoice.then(function(){ window._pwaPrompt = null; });
+    } else if(isIOS){
+      showModal('To install: tap the <strong>Share button</strong> at the bottom of Safari, then tap <strong>"Add to Home Screen"</strong>.');
+    } else {
+      showModal('To install: tap the <strong>three-dot menu</strong> in Chrome, then tap <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong>.');
+    }
+  };
 
-  if(isIOS){
-    setTimeout(function(){
-      showBanner('Tap the Share button (□↑) then "Add to Home Screen" for faster access.');
-    }, 3000);
-  } else if(isAndroid){
-    window.addEventListener('beforeinstallprompt', function(e){
-      e.preventDefault();
-      window._pwaPrompt = e;
-      showBanner('Tap here to install for faster access — no App Store needed.');
-      var banner = document.getElementById('bmp-pwa-banner');
-      if(banner){
-        banner.style.cursor = 'pointer';
-        banner.addEventListener('click', function(ev){
-          if(ev.target.tagName === 'BUTTON') return;
-          dismiss();
-          if(window._pwaPrompt) window._pwaPrompt.prompt();
-        });
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    window._pwaPrompt = e;
+    // Update button text if already rendered
+    var btn = document.getElementById('bmp-settings-install-btn');
+    if(btn) btn.textContent = '📲 Install App';
+  });
+
+  // Inject the install button into Settings after React renders
+  function injectInstallButton(){
+    if(document.getElementById('bmp-settings-install-btn')) return;
+    // Find the Appearance settings section by looking for "Dark Mode" text
+    var labels = document.querySelectorAll('span');
+    var darkModeRow = null;
+    for(var i=0; i<labels.length; i++){
+      if(labels[i].textContent === 'Dark Mode'){
+        darkModeRow = labels[i].closest('div[style]');
+        break;
       }
-    });
+    }
+    if(!darkModeRow) return;
+    var section = darkModeRow.parentElement;
+    if(!section) return;
+
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:4px 0;margin-top:8px;';
+    row.innerHTML = '<span style="font-size:14px;color:var(--text)">Install as App</span>';
+
+    var btn = document.createElement('button');
+    btn.id = 'bmp-settings-install-btn';
+    btn.textContent = window._pwaPrompt ? '📲 Install App' : '📲 How to Install';
+    btn.style.cssText = 'background:var(--accent);border:1px solid var(--border);border-radius:20px;padding:6px 16px;cursor:pointer;color:#fff;font-size:13px;font-weight:600;';
+    btn.onclick = function(){ window.bmpInstallApp && window.bmpInstallApp(); };
+
+    row.appendChild(btn);
+    section.appendChild(row);
   }
+
+  // Try injecting after React has had time to render
+  setTimeout(injectInstallButton, 1500);
+  setTimeout(injectInstallButton, 3000); // retry in case of slow load
 })();
 </script>
 </body>
