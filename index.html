@@ -2634,7 +2634,7 @@ if('serviceWorker' in navigator){
       '<span style="font-size:22px">📲</span>' +
       '<div style="flex:1"><div style="font-weight:600;margin-bottom:3px">Add to Home Screen</div>' +
       '<div style="font-size:12px;color:#888">' + msg + '</div></div>' +
-      '<button onclick="(function(){localStorage.setItem('bmp_pwa_prompt_dismissed','1');document.getElementById('bmp-pwa-banner').remove()})()" ' +
+      '<button onclick="(function(){localStorage.setItem(&apos;bmp_pwa_prompt_dismissed&apos;,&apos;1&apos;);document.getElementById(&apos;bmp-pwa-banner&apos;).remove()})()" ' +
       'style="background:none;border:none;color:#666;font-size:20px;cursor:pointer;padding:4px;line-height:1">✕</button>';
     document.body.appendChild(banner);
   }
