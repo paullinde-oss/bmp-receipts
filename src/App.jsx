@@ -5,6 +5,7 @@ import { Header } from "./components/Header";
 import { Home } from "./components/Home";
 import { Login } from "./components/Login";
 import { Settings } from "./components/Settings";
+import { Splash } from "./components/Splash";
 import { useToast } from "./hooks/useToast";
 import { loadConfig } from "./lib/config";
 import { APP_VERSION, DEFAULT_USERS } from "./lib/constants";
@@ -98,6 +99,7 @@ export default function App() {
       ];
   return (
     <div className="app-wrap">
+      <Splash />
       {user ? (
         <>
           <Header user={user} isAdmin={isAdmin} onLogout={onLogout} />

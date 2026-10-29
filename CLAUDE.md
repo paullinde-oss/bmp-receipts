@@ -64,11 +64,10 @@ A hardcoded fallback password works for any user with no entry in
 in the source (`src/lib/constants.js`, `src/components/Settings.jsx`); they are
 deliberately not written here in plain text.
 
-Known weakness (pre-existing): the login check in `src/components/Login.jsx`
-only rejects the default password if the device's cached config says the user
-has their own password. On a device with no cached config, the default password
-signs in as anyone. All of this is client-side and readable by anyone who opens
-the page, so treat it as a convenience lock, not security.
+A user with an entry in `userPasswords` must use it; the default password only
+works for users without one (checked against Firestore via `loadConfig()`, not
+just the device cache). All of this is client-side and readable by anyone who
+opens the page, so treat it as a convenience lock, not security.
 
 ## Source layout
 
@@ -78,6 +77,7 @@ the page, so treat it as a convenience lock, not security.
 | `src/App.jsx` | Session (user/admin/theme), tabs, FAB + hidden file inputs, toasts | `RR` |
 | `src/components/Login.jsx` | Name picker + password screen | `kR` |
 | `src/components/Header.jsx` | Header | `CR` |
+| `src/components/Splash.jsx` | Full-screen splash on load (1.8s, then 0.6s fade) | — |
 | `src/components/Capture.jsx` | Capture / AI scan / save screen | `PR` |
 | `src/components/ReceiptFields.jsx` | Editable receipt fields form | `R0` |
 | `src/components/ZoomableImage.jsx` | Pinch/wheel-zoom receipt preview | `BR` |
@@ -99,8 +99,8 @@ The source was recovered from the minified bundle mechanically (un-minified,
 split into modules, then variables renamed with a scope-aware tool). It was
 checked against the original by running both versions side by side on the same
 fake in-memory Firebase and comparing the rendered page after every step of
-automated click-throughs. Behaviour should be identical to the old bundle,
-quirks included.
+automated click-throughs. Behaviour matched the old bundle exactly; changes since
+then are deliberate bug fixes (see git log).
 
 ## Behaviour worth preserving
 
@@ -129,8 +129,8 @@ quirks included.
 2. **PWA install prompt isn't firing on Android.** `manifest.json`, `sw.js`, and
    the icons are in `public/`, but Chrome still won't offer "Install app". Worth
    debugging in DevTools → Application → Manifest.
-3. Splash screen: the splash images are preloaded and `.splash-screen` CSS exists,
-   but no component renders a splash in this version.
+3. Splash image is `object-fit: cover`, so edges get cropped on screens whose
+   shape differs from the image (long-standing "doesn't fit perfectly on mobile").
 4. Security (larger change): Firestore/Storage rules are wide open, and the
    Anthropic key and every user's password sit in `appConfig/settings`, readable
    by anyone. Moving the Claude call behind a server-side function would fix the

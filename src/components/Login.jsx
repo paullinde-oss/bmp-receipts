@@ -7,51 +7,29 @@ export function Login({ onLogin, users }) {
   const [password, setPassword] = useState("");
   const [showError, setShowError] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const rejectPassword = () => {
+    setIsSigningIn(false);
+    setShowError(true);
+    setPassword("");
+    setTimeout(() => setShowError(false), 2500);
+  };
+  // A user with an entry in userPasswords must use it; anyone else uses the
+  // default password. Always checked against loadConfig() (Firestore, or its
+  // fresh cache) so a missing local cache can't let the default password
+  // through for a user who has set their own.
   const handleSignIn = async () => {
-    if (password) {
-      setIsSigningIn(true);
-      // Default password is accepted unless the cached config shows this user has set their own.
-      if (password === DEFAULT_PASSWORD) {
-        try {
-          const cachedConfig = localStorage.getItem("bmp_config_cache");
-          if (cachedConfig) {
-            const userPasswords = JSON.parse(cachedConfig).userPasswords || {};
-            if (
-              userPasswords[selectedUser] &&
-              userPasswords[selectedUser] !== DEFAULT_PASSWORD
-            ) {
-              setIsSigningIn(false);
-              setShowError(true);
-              setPassword("");
-              setTimeout(() => setShowError(false), 2500);
-              return;
-            }
-          }
-          onLogin(selectedUser);
-          return;
-        } catch {
-          onLogin(selectedUser);
-          return;
-        }
-      }
-      try {
-        const storedPassword = ((await loadConfig()).userPasswords || {})[
-          selectedUser
-        ];
-        if (storedPassword && password === storedPassword) {
-          onLogin(selectedUser);
-        } else {
-          setIsSigningIn(false);
-          setShowError(true);
-          setPassword("");
-          setTimeout(() => setShowError(false), 2500);
-        }
-      } catch {
-        setIsSigningIn(false);
-        setShowError(true);
-        setPassword("");
-        setTimeout(() => setShowError(false), 2500);
-      }
+    if (!password) {
+      return;
+    }
+    setIsSigningIn(true);
+    let storedPassword;
+    try {
+      storedPassword = ((await loadConfig()).userPasswords || {})[selectedUser];
+    } catch {}
+    if (password === (storedPassword || DEFAULT_PASSWORD)) {
+      onLogin(selectedUser);
+    } else {
+      rejectPassword();
     }
   };
   if (selectedUser) {

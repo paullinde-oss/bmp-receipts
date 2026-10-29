@@ -16,6 +16,7 @@ export function ReceiptList({
   const [zoomImageUrl, setZoomImageUrl] = useState(null);
   const [moveTarget, setMoveTarget] = useState(null);
   const canDelete = (receipt) => isAdmin || receipt.user === currentUser;
+  // Returns true only if the receipt was actually deleted.
   const handleDelete = async (receipt, event) => {
     event.stopPropagation();
     if (
@@ -34,10 +35,12 @@ export function ReceiptList({
         if (onRefresh) {
           onRefresh();
         }
+        return true;
       } catch (error) {
         toast.error(`Delete failed: ${error.message}`);
       }
     }
+    return false;
   };
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -619,9 +622,10 @@ export function ReceiptList({
                       style={{
                         flex: 1,
                       }}
-                      onClick={(event) => {
-                        handleDelete(selectedReceipt, event);
-                        setSelectedReceipt(null);
+                      onClick={async (event) => {
+                        if (await handleDelete(selectedReceipt, event)) {
+                          setSelectedReceipt(null);
+                        }
                       }}
                     >
                       🗑 Delete

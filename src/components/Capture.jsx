@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { addDoc, collection, doc, updateDoc } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDocs,
+  query,
+  updateDoc,
+  where,
+} from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { ReceiptFields } from "./ReceiptFields";
 import { ZoomableImage } from "./ZoomableImage";
@@ -228,8 +236,34 @@ export function Capture({
     };
     reader.readAsDataURL(file);
   };
-  // Duplicate check is stubbed out: always "no duplicate", so the warning box never shows.
-  const checkDuplicate = async () => false;
+  // Looks for one of this user's receipts with the same date and total. If found,
+  // shows the "Possible Duplicate" box (Save Anyway / Cancel) and returns true.
+  // Fails open: if the lookup errors, saving goes ahead.
+  const checkDuplicate = async () => {
+    const total = parseFloat(fields.total);
+    if (!db || !fields.date || !total) {
+      return false;
+    }
+    try {
+      const snapshot = await getDocs(
+        query(
+          collection(db, "receipts"),
+          where("user", "==", user),
+          where("date", "==", fields.date),
+        ),
+      );
+      const match = snapshot.docs
+        .map((d) => d.data())
+        .find((receipt) => Math.abs((receipt.total || 0) - total) < 0.005);
+      if (match) {
+        setDuplicate(match);
+        return true;
+      }
+    } catch (error) {
+      console.warn("Duplicate check failed:", error);
+    }
+    return false;
+  };
   const saveReceipt = async () => {
     if (!imageFile && !isManualEntry) {
       toast.error("Please take or upload a photo");
@@ -498,7 +532,10 @@ export function Capture({
                 flex: 1,
                 padding: "10px",
               }}
-              onClick={saveReceipt}
+              onClick={() => {
+                setIsSaving(true);
+                saveReceipt();
+              }}
             >
               Save Anyway
             </button>
