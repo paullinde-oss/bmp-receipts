@@ -1,0 +1,10 @@
+{
+  "name": "bmp-receipts",
+  "private": true,
+  "scripts": {
+    "check": "node scripts/validate.js"
+  },
+  "devDependencies": {
+    "acorn": "^8.14.0"
+  }
+}
